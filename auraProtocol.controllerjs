@@ -1,0 +1,213 @@
+({
+	doInit: function(component, event, helper) {
+        
+        component.set("v.mycolumns", [
+            { label: $A.get("$Label.c.ProtocolId"), fieldName: 'protocolId', type: 'text'},
+            { label: $A.get("$Label.c.SolicitationState"), fieldName: 'solicitationState', type: 'text'},
+            { label: $A.get("$Label.c.SolicitationComment"), fieldName: 'solicitationComment', type: 'text'},
+            { label: $A.get("$Label.c.CarModelName"), fieldName: 'carModelName', type: 'text'},
+            { label: $A.get("$Label.c.VolumeOfVehicles"), fieldName: 'volume', type: 'text'},
+            { label: $A.get("$Label.c.PromoCode"), fieldName: 'promoCode', type: 'text'},
+            { label: $A.get("$Label.c.DiscountRequestState"), fieldName: 'discountRequestState', type: 'text'},
+            { label: $A.get("$Label.c.RequestedDiscount"), fieldName: 'requestDiscount', type: 'text'},
+            { label: $A.get("$Label.c.ApprovedDiscount"), fieldName: 'approvedDiscount', type: 'text'},
+        ]);
+        
+
+        var action = component.get("c.getPickListValuesIntoList");
+        action.setCallback(this, function(response){
+            var state2 = response.getState();
+            if(state2 === 'SUCCESS'){
+                var result = response.getReturnValue();
+                var fieldMap = [];
+                var i = 0;
+                for(var key in result){
+                    if(i == 0){
+                        fieldMap.push({key: key, value: result[key],selected:true});
+                        i++;
+                        component.set("v.Brand",  key);
+                        
+                    }else{
+                        fieldMap.push({key: key, value: result[key],selected:false});
+                    }
+                    
+
+                }
+                component.set("v.BrandMap", fieldMap);
+                
+            }
+        });
+        $A.enqueueAction(action);
+                    
+        
+        var fieldMapStatus = [];
+		fieldMapStatus.push({key: 'All', value: $A.get("$Label.c.OWC_All_channels"),selected:true});
+        fieldMapStatus.push({key: 'WAITING_FOR_ASSIGNMENT', value: $A.get("$Label.c.WaitingForAssignment"),selected:false});
+        fieldMapStatus.push({key: 'IN_PROGRESS', value: $A.get("$Label.c.MKTInProgress"),selected:false});
+        fieldMapStatus.push({key: 'REJECTED', value: $A.get("$Label.c.Rejected"),selected:false});
+        fieldMapStatus.push({key: 'ACCEPTED', value: $A.get("$Label.c.Accepted"),selected:false});
+        
+        component.set("v.SolicitationStateMap", fieldMapStatus);
+        
+    },
+    submitForm: function(component,event){
+        
+        component.set("v.isLoading", true);
+
+        var Brand = component.get("v.Brand");
+        var Dealer = component.get("v.Dealer");
+        var MinCreationDate = component.get("v.MinCreationDate");
+        var SolicitationState = component.get("v.SolicitationState");
+        var VNContractNumber = component.get("v.VNContractNumber");
+        
+        var recordId = component.get("v.recordId");
+        
+
+        if(Dealer == ""){
+            var toastEvent = $A.get("e.force:showToast");
+                toastEvent.setParams({
+                    "message": $A.get("$Label.c.FillRequiredFields"),
+                    "type" : "error"
+                });
+                toastEvent.fire();
+                component.set("v.isLoading", false);
+
+        }else{
+            if(SolicitationState == 'All'){
+                SolicitationState = "";
+                component.set("v.StatusChoose", ": " + $A.get("$Label.c.OWC_All_channels"));
+            }else{
+                component.set("v.StatusChoose", "");
+            }
+            var actionEndPoint = component.get("c.getEndpoint");
+            actionEndPoint.setParams({  
+                brand : Brand,
+                dealer : Dealer,
+                minCreationDate : MinCreationDate,
+                solicitationState : SolicitationState,
+                recordId : recordId
+            });
+            actionEndPoint.setCallback(this, function(response){
+                var state = response.getState();
+                if(state === "SUCCESS"){
+                    var statusChoose;
+                    var value = response.getReturnValue();
+                    if(value.length == 0){
+                        var toastEvent = $A.get("e.force:showToast");
+                        toastEvent.setParams({
+                            "message": $A.get("$Label.c.Lead_Convertion_Error"),
+                            "type" : "error"
+                        });
+                        toastEvent.fire();
+                        component.set("v.isLoading", false);
+                    }else{
+                        statusChoose = value[0].solicitationState;
+                        if(value.length == 1 && value[0].id == '0') {
+                    
+                            var toastEvent = $A.get("e.force:showToast");
+                            toastEvent.setParams({
+                                "message": $A.get("$Label.c.AfterSalesNoResults"),
+                                "type" : "info"
+                            });
+                            toastEvent.fire();
+                            
+                        } else {
+                            component.set("v.totalData", value);
+    
+                            if(value.length > 12) {
+                                component.set("v.isFirstPage", true);
+                                component.set("v.isLastPage", false);
+                                var dataList = [];
+                                for(var i = 0; i < 12; i++) {
+                                    dataList.push(value[i]);
+                                }
+                                component.set("v.myData", dataList);
+    
+                            } else {
+                                component.set("v.myData", value);
+                            }
+                            if(value[0].partialResponse){
+                                var toastEvent = $A.get("e.force:showToast");
+                                toastEvent.setParams({
+                                    "message": $A.get("$Label.c.PartialResponseMsg"),
+                                    "type" : "info"
+                                });
+                                toastEvent.fire();
+                            }
+                            
+                            component.set("v.isForm", false);
+                        }
+
+                        component.set("v.totalRecords", value.length);
+                        component.set("v.pageNumberTotal", Math.ceil(value.length / 12));
+                        
+                        component.set("v.isLoading", false);
+                        if(component.get("v.StatusChoose") == ""){
+                            component.set("v.StatusChoose", ": " + statusChoose);
+                        }
+                    }  
+                } else{
+                    
+                    var toastEvent = $A.get("e.force:showToast");
+                    toastEvent.setParams({
+                        "message": $A.get("$Label.c.Lead_Convertion_Error"),
+                        "type" : "error"
+                    });
+                    toastEvent.fire();
+                    component.set("v.isLoading", false);
+
+                }
+            });
+
+            $A.enqueueAction(actionEndPoint);
+        }
+    },
+    handleNextPage: function(component, event, helper) {
+        var page = component.get("v.pageNumber") + 1;
+        component.set("v.pageNumber", page);
+        component.set("v.isFirstPage", false);
+        var dataTotal = component.get("v.totalData");
+        var firstRecord = 12 * (page - 1);
+        var lastRecord = 12 * page - 1;
+        
+        if(lastRecord > dataTotal.length) {
+            component.set("v.isLastPage", true);
+            lastRecord = dataTotal.length - 1;
+        }
+        var dataList = [];
+        for(var i = firstRecord; i <= lastRecord; i++) {
+            dataList.push(dataTotal[i]);
+        }
+        component.set("v.myData", dataList);
+    },
+
+    handlePreviousPage: function(component, event, helper) {
+        var page = component.get("v.pageNumber") - 1;
+        component.set("v.pageNumber", page);
+        component.set("v.isLastPage", false);
+        var dataTotal = component.get("v.totalData");
+        var firstRecord = 12 * (page - 1);
+        var lastRecord = 12 * page - 1;
+        
+        if(firstRecord == 0) {
+            component.set("v.isFirstPage", true);
+        }
+        var dataList = [];
+        for(var i = firstRecord; i <= lastRecord; i++) {
+            dataList.push(dataTotal[i]);
+        }
+        component.set("v.myData", dataList);
+    },
+
+    handleBack: function(component, event, helper) {
+        component.set("v.isForm", true);
+        component.set("v.myData", []);
+        component.set("v.totalData", []);
+        component.set("v.isFirstPage", true);
+        component.set("v.isLastPage", true);
+        component.set("v.StatusChoose", "");
+        component.set("v.pageNumber", 1);
+        component.set("v.pageNumberTotal", 1);
+        component.set("v.totalRecords", 1);
+    }
+})
