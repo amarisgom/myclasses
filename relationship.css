@@ -1,0 +1,28 @@
+.filas {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+}
+.filas2 {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+}
+.my-card {
+    display: block;
+    border: 1px solid black;
+}
+.my-div {
+    display: flex;
+    align-items: stretch;
+}
+.red-utility-icon {
+    --sds-c-icon-color-background: #C6110E;
+}
+.red1-utility-icon {
+    --sds-c-icon-color-background: #f63f3f;
+}
+.link_cursor{
+    cursor: pointer;
+}
+.altura{
+    display: flex;
+}
