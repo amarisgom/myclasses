@@ -1,0 +1,134 @@
+/**
+	*   @Class 			: 	CNT_RelationshipPage
+	*   @Author         :   Azahara Mariscal
+	*   @Created        :   11 Agosto 2023
+	*   @description    :   TEST Class CNT_RelationshipPage
+**/
+@isTest
+public with sharing class CNT_RelationshipPage_Test {
+    @TestSetup
+    public static void makeData(){
+        List<Account> accList = new List<Account>();
+
+        Account test1 = new Account ();
+        test1.FirstName = 'TEST1';
+        test1.LastName = 'Acc1';
+        test1.ACC_PCK_Status__c = 'EXT';
+        accList.add(test1);
+
+        Account test2 = new Account ();
+        test2.FirstName = 'TEST2';
+        test2.LastName = 'Acc2';
+        test2.ACC_PCK_Status__c = 'TBO';
+        accList.add(test2);
+
+        insert accList;
+
+        List<Relationship__c> relList = new List<Relationship__c>();
+        Relationship__c rel1 = new Relationship__c();
+        rel1.REL_PCK_Type__c = 'FAM';
+        rel1.REL_PCK_RelationType__c = '01';
+        rel1.REL_LKP_relatedAccount1__c = test1.Id;
+        rel1.REL_LKP_relatedAccount2__c = test2.Id;
+		relList.add(rel1);
+        
+        Relationship__c rel2 = new Relationship__c();
+        rel2.REL_PCK_Type__c = 'BUS';
+        rel2.REL_PCK_RelationType__c = '11';
+        rel2.REL_LKP_relatedAccount1__c = test1.Id;
+        rel2.REL_LKP_relatedAccount2__c = test2.Id;
+		relList.add(rel2);
+        
+        Relationship__c rel3 = new Relationship__c();
+        rel3.REL_PCK_Type__c = 'FRI';
+        rel3.REL_PCK_RelationType__c = '06';
+        rel3.REL_LKP_relatedAccount1__c = test1.Id;
+        rel3.REL_LKP_relatedAccount2__c = test2.Id;
+		relList.add(rel3);
+        insert relList;
+
+        
+    }
+    /**
+	*   @description    :   Method test to method getRecords
+    **/
+    @isTest
+    public static void getRecordsTest() {
+        list<Account> acc = [Select Id from Account Where FirstName = 'TEST1' or FirstName = 'TEST2'];
+
+        map<String,  List<Relationship__c>> relMap1 = CNT_RelationshipPage.getRecords(acc[0].Id); 
+        map<String,  List<Relationship__c>> relMap2 =(CNT_RelationshipPage.getRecords(acc[1].Id)); 
+
+        List<Relationship__c> relList = relMap1.get('FAM1');
+        System.assertEquals(relList[0].REL_PCK_Type__c, 'FAM', 'Family relationship'); 
+    }
+    /**
+	*   @description    :   Method test to method getAccountInfo
+    **/
+    @isTest
+    public static void getAccountInfoTest() {
+        Account acc = [Select Id from Account Where FirstName = 'TEST1' limit 1];
+
+        List<Account> accList = CNT_RelationshipPage.getAccountInfo(acc.Id); 
+
+        System.assertEquals(accList.size() , 1, 'Get an Account'); 
+    }
+    /**
+	*   @description    :   Method test to method getPickListValues
+    **/
+    @isTest
+    public static void getPickListValuesTest() {
+        List < Map < String, String >> picklist =  CNT_RelationshipPage.getPickListValues('Relationship__c','REL_PCK_RelationType__c');
+        System.assertEquals(picklist.isEmpty() , false, 'Picklist values'); 
+    }
+    /**
+	*   @description    :   Method test to method getAccounts
+    **/
+    @isTest
+    public static void getAccountsTest() {
+        String acc = CNT_RelationshipPage.getAccounts('TEST');
+        System.assertEquals(STRING.isBlank(acc) , false, 'Account search'); 
+    }
+    /**
+	*   @description    :   Method test to method createRelation
+    **/
+    @isTest
+    public static void createRelationTest() {
+        List<Account> accList = [Select Id from Account];
+        Test.startTest();
+            CNT_RelationshipPage.createRelation(acclist[0].Id, accList[1].Id, 'FAM' , '02');
+        Test.stopTest();
+        list<Relationship__c> createRecord = [Select Id from Relationship__c where REL_PCK_RelationType__c  ='02' AND REL_PCK_Type__c = 'FAM'];
+        System.assertEquals(createRecord.isEmpty() , false , 'Record have been created'); 
+    }
+    /**
+	*   @description    :   Method test to method deleteRelation
+    **/
+    @isTest
+    public static void deleteRelationTest() {
+        List<Relationship__c> deleteRecord = [Select Id from Relationship__c];
+        List<Id> listId = new list<Id>{deleteRecord[0].Id};
+        Test.startTest();
+            CNT_RelationshipPage.deleteRelation(listId);
+        Test.stopTest();
+
+        List<Relationship__c> deleteRecordAfter = [Select Id from Relationship__c];
+
+        System.assertEquals(deleteRecordAfter.size() , deleteRecord.size() -1 , 'Record have been deleted'); 
+    }
+     /**
+	*   @description    :   Method test to method editRelation
+    **/
+    @isTest
+    public static void editRelationTest() {
+        List<Relationship__c> editRecord = [Select Id,REL_PCK_RelationType__c from Relationship__c];
+        List<Id> listId = new list<Id>{editRecord[0].Id};
+        Test.startTest();
+            CNT_RelationshipPage.editRelation(listId, '01');
+        Test.stopTest();
+
+        List<Relationship__c> editRecordAfter = [Select Id, REL_PCK_RelationType__c from Relationship__c where Id IN :listId];
+
+        System.assertEquals(editRecordAfter[0].REL_PCK_RelationType__c , '01' , 'REL_PCK_RelationType__c have been changed'); 
+    }
+}
