@@ -1,0 +1,154 @@
+<aura:component controller="ProtSolicitationStatusReqController" implements="force:hasRecordId,force:lightningQuickActionWithoutHeader,forceCommunity:availableForAllPageTypes" access="global" >
+    <aura:attribute name="recordId" type="String" />    
+
+    <aura:attribute name ="isLoading" type = "boolean" default="false"/>
+    <aura:attribute name ="isForm" type = "boolean" default="true"/>
+
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+
+    <aura:attribute name ="Brand" type = "String" />   
+    <aura:attribute name ="Dealer" type = "String" default=""/>   
+    <aura:attribute name ="MinCreationDate" type = "Date" default=""/>   
+    <aura:attribute name ="SolicitationState" type = "String" />   
+    
+    <aura:attribute name ="StatusChoose" type = "String" default=""/>  
+
+    <aura:attribute name="BrandMap" type="Map"/> 
+    <aura:attribute name="SolicitationStateMap" type="Map" />
+
+    
+    <aura:attribute name="VNContractNumber" type = "String" default=""/>
+
+    <aura:attribute name="totalData" type="List"/>
+    <aura:attribute name="myData" type="List"/>
+    <aura:attribute name="mycolumns" type="List"/>
+    <aura:attribute name ="isFirstPage" type = "boolean" default="true"/>
+    <aura:attribute name ="isLastPage" type = "boolean" default="true"/>
+    <aura:attribute name ="pageNumber" type = "Integer" default="1"/>
+    <aura:attribute name ="pageNumberTotal" type = "Integer" default="1"/>
+    <aura:attribute name ="totalRecords" type = "Integer" default="1"/>
+
+    
+    <aura:if isTrue="{!v.isLoading}">
+        <lightning:spinner></lightning:spinner>
+    </aura:if>
+    <div class="modal-header slds-modal__header slds-size_1-of-1">
+        <h4 class="title slds-text-heading_medium">{!$Label.c.ProtocolSolicitationStatus} {!v.StatusChoose}</h4>
+    </div>
+    <aura:if isTrue="{!v.isForm}">
+
+        <!-- Form screen -->
+        <aura:html tag="style">
+            .slds-p-around--medium {
+                padding: 0rem !important;
+            }
+            .slds-modal__content{
+                height:unset !important;
+                max-height:unset !important;
+            }
+            .cuf-content {
+                padding: 0 0rem !important;
+            }
+        </aura:html>
+
+        <div title="{!$Label.c.ProtocolSolicitationStatus}" class="slds-modal__content slds-var-p-around_medium" style="height: fit-content !important;">
+           
+            <lightning:select aura:id="Brand" value="{!v.Brand}"  name="Brand" label="{!$Label.c.UX_Customer_Brand}" required="true">  
+                <aura:iteration items="{!v.BrandMap}" var="i">
+                    <option text="{!i.value}" value="{!i.key}" selected="{!i.selected}" />
+                </aura:iteration>
+            </lightning:select>
+            <c:WebSellerDealerLookup
+                                objectAPIName="Account"
+                                label="{!$Label.c.Dealer}"
+                                returnFieldsString="Name"
+                                queryFieldsString="Name"
+                                selectedId="{!v.Dealer}"
+                                required = "true" 
+                                showAddNew="false"
+                                showRecent = "true"
+                                isFlow="false"
+                                brand="{!v.Brand}"
+                                isCentralSales="false"
+                                isWebSeller = "false"
+                                isFCA ="{!v.isFCA}"
+            />
+            <lightning:input label = "{!$Label.c.MinimalCreationDate}"
+                             onchange= "{!c.handleMinCreationDate}"
+                             type = "DateTime"
+                             value="{!v.MinCreationDate}">
+            </lightning:input>
+            <lightning:select aura:id="SolicitationState" value="{!v.SolicitationState}" name="Solicitation State" label="{!$Label.c.SolicitationState}" required="true">
+                <aura:iteration items="{!v.SolicitationStateMap}" var="i">
+                    <option text="{!i.value}" value="{!i.key}" selected="{!i.selected}" />
+                </aura:iteration>
+            </lightning:select>
+            
+        </div>
+        <footer class="slds-modal__footer">
+            <lightning:button label = "{!$Label.c.GenericSaveButton}"
+                            onclick = "{!c.submitForm}"
+                            variant = "brand">
+            </lightning:button>
+        </footer>
+        
+
+        <aura:set attribute="else">
+            <!-- Table screen -->
+
+            <aura:html tag="style">
+                .cuf-content {
+                    padding: 0 0rem !important;
+                }
+                .slds-p-aroundmedium {
+                    padding: 0rem !important;
+                }
+                .slds-modal__container{
+                    display: flex;
+                    flex-direction: row;
+                    height : fit-content;
+                    width: 95%;
+                    max-width: unset !important;
+                    min-width: unset !important;
+                }
+                
+            </aura:html>
+            
+            <div class="slds-modal__content slds-var-p-around_medium" style="height: 32rem">
+                
+                <lightning:datatable data="{! v.myData }" columns="{! v.mycolumns }" keyField="Id" hideCheckboxColumn="true" class="hover table data-table white-background" />
+
+            </div>
+            
+            <footer>
+                <div class="slds-float_left">
+                    <lightning:button label = "{!$Label.c.CC_Back}"
+                        onclick = "{!c.handleBack}"
+                        variant = "brand">
+                    </lightning:button>
+                </div>
+                <div class="slds-col slds-size_1-of-3 slds-align_absolute-center">
+                    <div class="slds-grid slds-gutters ">
+                        <div class="slds-var-m-left_small slds-var-m-right_small">
+                            <aura:if isTrue="{!!v.isFirstPage}">
+                                <lightning:buttonIcon variant="brand" iconName="utility:arrow_left"
+                                    class="slds-float_left"  onclick="{!c.handlePreviousPage}">
+                                </lightning:buttonIcon>
+                            </aura:if>
+                        </div>
+                        <div class="slds-var-m-left_small slds-var-m-right_small slds-text-heading_small slds-align_absolute-center">
+                            {!$Label.c.Page}&nbsp;{!v.pageNumber}&nbsp;{!$Label.c.CC_Of}&nbsp;{!v.pageNumberTotal}
+                        </div>
+                        <div class="slds-var-m-left_small slds-var-m-right_small">
+                            <aura:if isTrue="{!!v.isLastPage}">
+                                <lightning:buttonIcon variant="brand" iconName="utility:arrow_right"
+                                    class="slds-float_left" onclick="{!c.handleNextPage}">
+                                </lightning:buttonIcon>
+                            </aura:if>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </aura:set>
+    </aura:if>
+</aura:component>
